@@ -14,7 +14,7 @@ export class AuthService {
     private jwt: JwtService,
     private config: ConfigService,
   ) {}
-  async signup(dto: AuthDto) {
+  async userSignup(dto: AuthDto) {
     const hash = await argon.hash(dto.password);
     try {
       const user = await this.prisma.user.create({
@@ -22,13 +22,40 @@ export class AuthService {
           email: dto.email,
           firstName: dto.firstName,
           hash,
+          userType: 'USER',
         },
         // select: {
         //   email: true,
         //   firstName: true,
         // },
       });
-      return this.signToken(user.id, user.email);
+      return this.signToken(user.id, user.email, user.userType);
+    } catch (error) {
+      if (error instanceof PrismaClientKnownRequestError) {
+        if (error.code === 'P2002') {
+          throw new ForbiddenException('Crediential Taken');
+        }
+      }
+      throw error;
+    }
+  }
+
+  async authorSignup(dto: AuthDto) {
+    const hash = await argon.hash(dto.password);
+    try {
+      const user = await this.prisma.user.create({
+        data: {
+          email: dto.email,
+          firstName: dto.firstName,
+          hash,
+          userType: 'AUTHOR',
+        },
+        // select: {
+        //   email: true,
+        //   firstName: true,
+        // },
+      });
+      return this.signToken(user.id, user.email, user.userType);
     } catch (error) {
       if (error instanceof PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {
@@ -52,15 +79,17 @@ export class AuthService {
     if (!pwMatches) {
       throw new ForbiddenException('crediential wrong');
     }
-    return this.signToken(user.id, user.email);
+    return this.signToken(user.id, user.email, user.userType);
   }
   async signToken(
     userId: number,
     email: string,
+    role: string,
   ): Promise<{ access_token: string }> {
     const payload = {
       sub: userId,
       email,
+      role,
     };
     const secret = this.config.get('JWT_SECRET');
     const token = await this.jwt.signAsync(payload, {

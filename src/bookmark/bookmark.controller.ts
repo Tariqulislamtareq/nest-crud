@@ -9,12 +9,14 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import { GetUser } from 'src/auth/decorartor';
-import { JwtGuard } from 'src/auth/guard';
+import { GetUser, Roles } from 'src/auth/decorator';
+import { Role } from 'src/auth/enum';
+import { JwtGuard, RolesGuard } from 'src/auth/guard';
 import { BookmarkService } from './bookmark.service';
 import { CreateBookmarkDto, EditBookmarkDto } from './dto';
 
-@UseGuards(JwtGuard)
+@Roles('AUTHOR')
+@UseGuards(JwtGuard, RolesGuard)
 @Controller('bookmarks')
 export class BookmarkController {
   constructor(private bookmarkService: BookmarkService) {}
